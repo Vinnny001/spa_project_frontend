@@ -2,7 +2,10 @@ import "../../assets/styles/Services.css";
 import axios from "axios";
 import { useState, useEffect } from "react";
 
-const API = import.meta.env.VITE_API_URL;
+const API =
+  import.meta.env.MODE === "developmen"
+    ? import.meta.env.VITE_DEV_API_URL
+    : import.meta.env.VITE_API_URL;
 
 /* PEDICURE */
 import p1 from "../../assets/images/1.jpeg";
@@ -33,15 +36,18 @@ import d4 from "../../assets/images/4444.jpeg";
 export default function Services() {
 
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
 
 useEffect(() => {
-
   const user = JSON.parse(localStorage.getItem("user"));
 
   if (user?.phone) {
     setPhone(user.phone);
   }
 
+  if (user?.email) {
+    setEmail(user.email);
+  }
 }, []);
 
 
@@ -53,12 +59,21 @@ const handlePayment = async (amount, index) => {
     return;
   }
 
+  if (!email) {
+    alert("Email missing");
+    return;
+  }
+
   try {
     setLoadingIndex(index);
 
     const response = await axios.post(
       `${API}/v1/payments/pay`,
-      { phone_number: phone, amount: parseInt(amount) },
+      {
+        phone_number: phone,
+        email,
+        amount: parseInt(amount),
+      },
       {
         headers: {
           "ngrok-skip-browser-warning": "true",
@@ -68,9 +83,14 @@ const handlePayment = async (amount, index) => {
     );
 
     alert(response.data.message);
+
   } catch (error) {
     console.log(error);
-    alert(error.response?.data?.message || "Payment failed");
+
+    alert(
+      error.response?.data?.message || "Payment failed"
+    );
+
   } finally {
     setLoadingIndex(null);
   }
