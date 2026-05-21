@@ -107,8 +107,8 @@ export default function Services() {
       services: [
         {
           name: "Swedish Massage",
-          price: "20",
-          displayPrice: "KES 20",
+          price: "100",
+          displayPrice: "KES 100",
           duration: "60 mins",
           description: "A gentle full-body massage that promotes relaxation and better circulation.",
           images: [s1, s2, s3, s4, s5]
@@ -151,8 +151,8 @@ export default function Services() {
       services: [
         {
           name: "Glow Facial",
-          price: "5",
-          displayPrice: "KES 5",
+          price: "50",
+          displayPrice: "KES 50",
           duration: "60 mins",
           description: "Deep cleansing facial treatment for glowing healthy skin.",
           images: [
