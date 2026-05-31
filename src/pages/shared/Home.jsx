@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import spaImage from "../../assets/images/spa.jpg4.jpeg";
 import "../../assets/styles/Home.css";
 
 export default function Home() {
@@ -17,7 +16,7 @@ export default function Home() {
 
       <div
         className="hero"
-        style={{ backgroundImage: `url(${spaImage})` }}
+        style={{ backgroundImage: `url(/images/spa.jpg4.jpeg)` }}
       >
 
         <div className="overlay"></div>

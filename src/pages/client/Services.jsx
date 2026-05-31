@@ -7,37 +7,15 @@ const API =
     ? import.meta.env.VITE_DEV_API_URL
     : import.meta.env.VITE_API_URL;
 
-/* PEDICURE */
-import p1 from "../../assets/images/1.jpeg";
-import p2 from "../../assets/images/2.jpeg";
-import p3 from "../../assets/images/3.jpeg";
-import p4 from "../../assets/images/4.jpeg";
-import p5 from "../../assets/images/5.jpeg";
-
-/* MANICURE */
-import m1 from "../../assets/images/11.jpeg";
-import m2 from "../../assets/images/22.jpeg";
-import m3 from "../../assets/images/33.jpeg";
-import m4 from "../../assets/images/44.jpeg";
-
-/* SWEDISH MASSAGE */
-import s1 from "../../assets/images/111.jpeg";
-import s2 from "../../assets/images/222.jpeg";
-import s3 from "../../assets/images/333.jpeg";
-import s4 from "../../assets/images/444.jpeg";
-import s5 from "../../assets/images/555.jpeg";
-
-/* DEEP TISSUE MASSAGE */
-import d1 from "../../assets/images/1111.jpeg";
-import d2 from "../../assets/images/2222.jpeg";
-import d3 from "../../assets/images/3333.jpeg";
-import d4 from "../../assets/images/4444.jpeg";
-
 export default function Services() {
 
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [loadingIndex, setLoadingIndex] = useState(null);
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [failedImages, setFailedImages] = useState(new Set());
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -49,6 +27,23 @@ export default function Services() {
     if (user?.email) setEmail(user.email);
   }, []);
 
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`${API}/v1/services/available`);
+        setServices(response.data.data || []);
+      } catch (err) {
+        console.error("Error fetching services:", err);
+        setError("Failed to load services");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
   // Open modal and store which service was clicked
   const openModal = (service, uniqueIndex) => {
     setSelectedService({ ...service, uniqueIndex });
@@ -58,6 +53,22 @@ export default function Services() {
   const closeModal = () => {
     setModalOpen(false);
     setSelectedService(null);
+  };
+
+  const handleImageError = (imgUrl) => {
+    setFailedImages(prev => new Set([...prev, imgUrl]));
+  };
+
+  // Transform image URLs from assets/images to public /images
+  const transformImageUrl = (url) => {
+    if (!url) return "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f";
+    
+    // If it's a local path in assets/images, transform it to /images
+    if (url.includes("assets/images")) {
+      return url.replace(/.*assets\/images\//, "/images/");
+    }
+    
+    return url;
   };
 
   const handlePayment = async () => {
@@ -100,104 +111,72 @@ export default function Services() {
     }
   };
 
-  const categories = [
-    {
-      name: "Massage 💆‍♀️",
-      description: "Relaxing therapies that help relieve stress, body fatigue and muscle tension.",
-      services: [
-        {
-          name: "Swedish Massage",
-          price: "100",
-          displayPrice: "KES 100",
-          duration: "60 mins",
-          description: "A gentle full-body massage that promotes relaxation and better circulation.",
-          images: [s1, s2, s3, s4, s5]
-        },
-        {
-          name: "Deep Tissue Massage",
-          price: "2500",
-          displayPrice: "KES 2500",
-          duration: "75 mins",
-          description: "Firm-pressure massage designed to relieve deeper muscle tension and pain.",
-          images: [d1, d2, d3, d4]
-        }
-      ]
-    },
-    {
-      name: "Nails 💅",
-      description: "Professional nail care services for healthy, elegant and beautiful nails.",
-      services: [
-        {
-          name: "Manicure",
-          price: "1000",
-          displayPrice: "KES 1000",
-          duration: "30 mins",
-          description: "Nail shaping, cuticle care and polish application for neat elegant hands.",
-          images: [m1, m2, m3, m4]
-        },
-        {
-          name: "Pedicure",
-          price: "1500",
-          displayPrice: "KES 1500",
-          duration: "45 mins",
-          description: "Relaxing foot treatment including soaking, scrubbing and massage.",
-          images: [p1, p2, p3, p4, p5]
-        }
-      ]
-    },
-    {
-      name: "Facials 🌸",
-      description: "Professional skincare treatments that cleanse, refresh and brighten your skin.",
-      services: [
-        {
-          name: "Glow Facial",
-          price: "50",
-          displayPrice: "KES 50",
-          duration: "60 mins",
-          description: "Deep cleansing facial treatment for glowing healthy skin.",
-          images: [
-            "https://images.unsplash.com/photo-1515377905703-c4788e51af15",
-            "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f",
-            "https://images.unsplash.com/photo-1524504388940-b1c1722653e1",
-            "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
-            "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e"
-          ]
-        }
-      ]
+  // Group services by category
+  const groupedByCategory = services.reduce((acc, service) => {
+    const category = service.category_name || "Other";
+    if (!acc[category]) {
+      acc[category] = [];
     }
-  ];
+    acc[category].push(service);
+    return acc;
+  }, {});
+
+  const getCategoryEmoji = (categoryName) => {
+    if (categoryName.toLowerCase().includes("massage")) return "💆‍♀️";
+    if (categoryName.toLowerCase().includes("nail")) return "💅";
+    if (categoryName.toLowerCase().includes("facial")) return "🌸";
+    return "✨";
+  };
+
+  if (loading) {
+    return (
+      <div className="services-page">
+        <h1 className="services-title">✨ Our Spa Services</h1>
+        <p style={{ textAlign: "center", padding: "2rem" }}>Loading services...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="services-page">
+        <h1 className="services-title">✨ Our Spa Services</h1>
+        <p style={{ textAlign: "center", padding: "2rem", color: "red" }}>{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="services-page">
 
       <h1 className="services-title">✨ Our Spa Services</h1>
 
-      {categories.map((category, i) => (
-        <section key={i} className="category-section">
+      {Object.entries(groupedByCategory).map(([category, categoryServices], i) => (
+        <section key={category} className="category-section">
 
-          <h2 className="category-title">{category.name}</h2>
-          <p className="category-description">{category.description}</p>
+          <h2 className="category-title">{getCategoryEmoji(category)} {category}</h2>
 
           <div className="services-container">
-            {category.services.map((service, j) => {
+            {categoryServices.map((service, j) => {
               const uniqueIndex = `${i}-${j}`;
               const isLoading = loadingIndex === uniqueIndex;
+              const images = (service.images || []).map(transformImageUrl).filter(url => url);
 
               return (
-                <div key={j} className="service-card">
+                <div key={service.id} className="service-card">
 
-                  <h3>{service.name}</h3>
+                  <h3>{service.title}</h3>
                   <p className="service-description">{service.description}</p>
 
                   <div className="service-images">
-                    {service.images.map((img, k) => (
-                      <img key={k} src={img} alt={service.name} />
+                    {images.slice(0, 5).map((img, k) => (
+                      <img key={k} src={img} alt={service.title} onError={() => handleImageError(img)} />
                     ))}
                   </div>
 
                   <div className="service-details">
-                    <span>{service.duration}</span>
-                    <span>{service.displayPrice}</span>
+                    <span>{service.duration_minutes} mins</span>
+                    <span>KES {service.price}</span>
                   </div>
 
                   <button
@@ -226,9 +205,9 @@ export default function Services() {
             <h2 className="modal-title">📅 Book Appointment</h2>
 
             <div className="modal-service-info">
-              <span className="modal-service-name">{selectedService.name}</span>
+              <span className="modal-service-name">{selectedService.title}</span>
               <span className="modal-service-meta">
-                {selectedService.duration} &nbsp;·&nbsp; {selectedService.displayPrice}
+                {selectedService.duration_minutes} mins &nbsp;·&nbsp; KES {selectedService.price}
               </span>
             </div>
 
@@ -247,7 +226,7 @@ export default function Services() {
               onClick={handlePayment}
               disabled={loadingIndex !== null}
             >
-              {loadingIndex !== null ? "Processing..." : `Pay ${selectedService.displayPrice}`}
+              {loadingIndex !== null ? "Processing..." : `Pay KES ${selectedService.price}`}
             </button>
 
           </div>
