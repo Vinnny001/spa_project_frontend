@@ -9,6 +9,21 @@
   gap: 20px;
 }
 
+.admin-debug {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.admin-debug small {
+  background: rgba(0,0,0,0.04);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
 .admin-card {
   background: white;
   padding: 20px;

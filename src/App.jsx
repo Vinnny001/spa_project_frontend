@@ -33,7 +33,7 @@ function App() {
       <Suspense fallback={<div>Loading...</div>}>
         <Routes>
 
-<Route path="/admin" element={<AdminLayout />}>
+<Route path="/admin/*" element={<AdminLayout />}>
   <Route index element={<AdminDashboard />} />
   <Route path="services" element={<ManageServices />} />
   <Route path="bookings" element={<ManageBookings />} />
@@ -44,7 +44,7 @@ function App() {
           <Route path="/login" element={<Login />} />
 
           <Route
-  path="/client"
+  path="/client/*"
   element={
     <ProtectedRoute>
       <ClientLayout />

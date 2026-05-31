@@ -136,16 +136,23 @@ export default function MyAppointments() {
             </div>
             <p>Total: KES {totalAmount.toFixed(2)}</p>
 
-            {!paid && (
-              <div className="appointment-payment">
-                <button
-                  className="book-btn"
-                  onClick={() => handleStartPayment(appointment.id)}
-                >
-                  Pay for appointment
-                </button>
-              </div>
-            )}
+            {!paid && appointment.status !== "Cancelled" && (
+  <div className="appointment-payment">
+    <button
+      className="book-btn"
+      onClick={() => handleStartPayment(appointment.id)}
+    >
+      Pay for appointment
+    </button>
+
+    <button
+      className="cancel-btn"
+      onClick={() => handleCancelAppointment(appointment.id)}
+    >
+      Cancel Appointment
+    </button>
+  </div>
+)}
 
             {paymentAppointmentId === appointment.id && (
               <div className="payment-form">

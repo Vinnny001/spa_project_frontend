@@ -79,7 +79,6 @@ export default function BookAppointment() {
       await axios.post(
         `${API}/v1/appointments`,
         {
-          staff_id: 1,
           service_ids: [selectedServiceId],
           scheduled_at,
           notes,
