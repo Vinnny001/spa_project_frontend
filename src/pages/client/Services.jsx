@@ -1,6 +1,7 @@
 import "../../assets/styles/Services.css";
 import axios from "axios";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const API =
   import.meta.env.MODE === "development"
@@ -9,23 +10,12 @@ const API =
 
 export default function Services() {
 
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [loadingIndex, setLoadingIndex] = useState(null);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [failedImages, setFailedImages] = useState(new Set());
 
-  // Modal state
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState(null);
-
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user?.phone) setPhone(user.phone);
-    if (user?.email) setEmail(user.email);
-  }, []);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -44,15 +34,8 @@ export default function Services() {
     fetchServices();
   }, []);
 
-  // Open modal and store which service was clicked
-  const openModal = (service, uniqueIndex) => {
-    setSelectedService({ ...service, uniqueIndex });
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setSelectedService(null);
+  const openBooking = (service) => {
+    navigate("/client/book-appointment", { state: { service } });
   };
 
   const handleImageError = (imgUrl) => {
@@ -69,46 +52,6 @@ export default function Services() {
     }
     
     return url;
-  };
-
-  const handlePayment = async () => {
-    if (!phone) {
-      alert("Enter phone number");
-      return;
-    }
-
-    if (!email) {
-      alert("Email missing");
-      return;
-    }
-
-    try {
-      setLoadingIndex(selectedService.uniqueIndex);
-      closeModal();
-
-      const response = await axios.post(
-        `${API}/v1/payments/pay`,
-        {
-          phone_number: phone,
-          email,
-          amount: parseInt(selectedService.price),
-        },
-        {
-          headers: {
-            "ngrok-skip-browser-warning": "true",
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      alert(response.data.message);
-
-    } catch (error) {
-      console.log(error);
-      alert(error.response?.data?.message || "Payment failed");
-    } finally {
-      setLoadingIndex(null);
-    }
   };
 
   // Group services by category
@@ -158,8 +101,6 @@ export default function Services() {
 
           <div className="services-container">
             {categoryServices.map((service, j) => {
-              const uniqueIndex = `${i}-${j}`;
-              const isLoading = loadingIndex === uniqueIndex;
               const images = (service.images || []).map(transformImageUrl).filter(url => url);
 
               return (
@@ -181,10 +122,9 @@ export default function Services() {
 
                   <button
                     className="book-btn"
-                    disabled={isLoading}
-                    onClick={() => openModal(service, uniqueIndex)}
+                    onClick={() => openBooking(service)}
                   >
-                    {isLoading ? "Processing..." : "Book Appointment"}
+                    Book Appointment
                   </button>
 
                 </div>
@@ -195,43 +135,6 @@ export default function Services() {
         </section>
       ))}
 
-      {/* PAYMENT MODAL */}
-      {modalOpen && selectedService && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-
-            <button className="modal-close" onClick={closeModal}>✕</button>
-
-            <h2 className="modal-title">📅 Book Appointment</h2>
-
-            <div className="modal-service-info">
-              <span className="modal-service-name">{selectedService.title}</span>
-              <span className="modal-service-meta">
-                {selectedService.duration_minutes} mins &nbsp;·&nbsp; KES {selectedService.price}
-              </span>
-            </div>
-
-            <div className="modal-field">
-              <label>Mpesa Phone Number</label>
-              <input
-                type="text"
-                placeholder="e.g. 0712345678"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-
-            <button
-              className="modal-confirm-btn"
-              onClick={handlePayment}
-              disabled={loadingIndex !== null}
-            >
-              {loadingIndex !== null ? "Processing..." : `Pay KES ${selectedService.price}`}
-            </button>
-
-          </div>
-        </div>
-      )}
 
     </div>
   );
