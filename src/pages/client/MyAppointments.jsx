@@ -171,7 +171,7 @@ export default function MyAppointments() {
             </div>
             <p>
               Scheduled: {new Date(`${appointment.appointment_date?.split("T")[0]}T${appointment.appointment_time}`).toLocaleString()}</p>
-            <p>Staff: {appointment.staff_name || "TBD"}</p>
+            <p>Staff: {appointment.staff_name || "Not assigned"}</p>
             <p>Payment status: {paymentLabel}</p>
             <div className="appointment-services">
               <h3>Services</h3>
