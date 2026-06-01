@@ -13,11 +13,19 @@ export default function MyAppointments() {
   const [paymentAppointmentId, setPaymentAppointmentId] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [transactionId, setTransactionId] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
     fetchAppointments();
+  }, []);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (user?.phone) setPhone(user.phone);
+    if (user?.email) setEmail(user.email);
   }, []);
 
   const fetchAppointments = async () => {
@@ -46,37 +54,59 @@ export default function MyAppointments() {
 
   const handlePay = async () => {
     if (!paymentAppointmentId) return;
-    if (!transactionId) {
-      setError("Please enter a transaction/reference ID.");
-      return;
-    }
-
     setSubmitting(true);
     setError("");
-    try {
-      const token = localStorage.getItem("token");
-      const appointment = appointments.find(
-        (appt) => appt.id === paymentAppointmentId,
-      );
-      const amount = appointment.services.reduce(
-        (sum, service) => sum + parseFloat(service.price || 0),
-        0,
-      );
 
-      await axios.post(
-        `${API}/v1/appointments/${paymentAppointmentId}/payments`,
-        {
-          amount,
-          method: paymentMethod,
-          transaction_id: transactionId,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+    const token = localStorage.getItem("token");
+    const appointment = appointments.find((appt) => appt.id === paymentAppointmentId);
+    const amount = appointment.services.reduce((sum, service) => sum + parseFloat(service.price || 0), 0);
+
+    try {
+      if (paymentMethod === "mpesa") {
+        // MPesa flow: require phone (confirm popup handled in UI)
+        if (!phone) {
+          setError("Please provide your Mpesa phone number.");
+          setSubmitting(false);
+          return;
+        }
+
+        await axios.post(
+          `${API}/v1/appointments/${paymentAppointmentId}/payments`,
+          {
+            amount,
+            method: "mpesa",
+            phone_number: phone,
           },
-        },
-      );
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      } else {
+        // Other methods require a transaction/reference id
+        if (!transactionId) {
+          setError("Please enter a transaction/reference ID.");
+          setSubmitting(false);
+          return;
+        }
+
+        await axios.post(
+          `${API}/v1/appointments/${paymentAppointmentId}/pay`,
+          {
+            amount,
+            method: paymentMethod,
+            transaction_id: transactionId,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
 
       setSuccess("Payment recorded successfully.");
       setPaymentAppointmentId(null);
@@ -86,6 +116,25 @@ export default function MyAppointments() {
       setError(err.response?.data?.message || "Failed to record payment.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCancelAppointment = async (appointmentId) => {
+    const confirmed = window.confirm("Are you sure you want to cancel this appointment?");
+    if (!confirmed) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      // Attempt a cancel endpoint; backend should accept POST /:id/cancel
+      await axios.post(
+        `${API}/v1/appointments/${appointmentId}/cancel`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSuccess("Appointment cancelled.");
+      fetchAppointments();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to cancel appointment.");
     }
   };
 
@@ -164,28 +213,53 @@ export default function MyAppointments() {
                   >
                     <option value="cash">Cash</option>
                     <option value="card">Card</option>
+                    <option value="mpesa">Mpesa</option>
                     <option value="bank_transfer">Bank transfer</option>
                     <option value="other">Other</option>
                   </select>
                 </label>
 
-                <label>
-                  Transaction/Reference ID
-                  <input
-                    type="text"
-                    value={transactionId}
-                    onChange={(e) => setTransactionId(e.target.value)}
-                    placeholder="Mpesa or bank reference"
-                  />
-                </label>
+                {paymentMethod === "mpesa" ? (
+                  <>
+                    <label>
+                      Mpesa Phone Number
+                      <input
+                        type="text"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="e.g. 0712345678"
+                      />
+                    </label>
 
-                <button
-                  className="modal-confirm-btn"
-                  onClick={handlePay}
-                  disabled={submitting}
-                >
-                  {submitting ? "Recording payment..." : "Confirm Payment"}
-                </button>
+                    <button
+                      className="modal-confirm-btn"
+                      onClick={handlePay}
+                      disabled={submitting}
+                    >
+                      {submitting ? "Processing Mpesa..." : "Pay with Mpesa"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <label>
+                      Transaction/Reference ID
+                      <input
+                        type="text"
+                        value={transactionId}
+                        onChange={(e) => setTransactionId(e.target.value)}
+                        placeholder="Mpesa or bank reference"
+                      />
+                    </label>
+
+                    <button
+                      className="modal-confirm-btn"
+                      onClick={handlePay}
+                      disabled={submitting}
+                    >
+                      {submitting ? "Recording payment..." : "Confirm Payment"}
+                    </button>
+                  </>
+                )}
 
                 <button
                   type="button"
