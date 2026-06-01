@@ -139,8 +139,9 @@ export default function MyAppointments() {
   };
 
   const isPaid = (appointment) =>
-    appointment.payments &&
-    appointment.payments.some((payment) => payment.status === "completed");
+  appointment.payment_status === "Paid" ||
+  (appointment.payments?.some((payment) => payment.payment_status === "Paid") ?? false);
+
 
   return (
     <div className="my-appointments-page">
@@ -169,8 +170,7 @@ export default function MyAppointments() {
               <span className={`status ${appointment.status}`}>{appointment.status}</span>
             </div>
             <p>
-              Scheduled: {new Date(appointment.scheduled_at).toLocaleString()}
-            </p>
+              Scheduled: {new Date(`${appointment.appointment_date?.split("T")[0]}T${appointment.appointment_time}`).toLocaleString()}</p>
             <p>Staff: {appointment.staff_name || "TBD"}</p>
             <p>Payment status: {paymentLabel}</p>
             <div className="appointment-services">
