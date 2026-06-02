@@ -34,7 +34,7 @@ function App() {
         <Routes>
 
 <Route path="/admin/*" element={<AdminLayout />}>
-  <Route index element={<AdminDashboard />} />
+  <Route path="dashboard" element={<AdminDashboard />} />
   <Route path="services" element={<ManageServices />} />
   <Route path="bookings" element={<ManageBookings />} />
   <Route path="clients" element={<ManageClients />} />

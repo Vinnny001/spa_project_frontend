@@ -75,7 +75,7 @@ export default function Login() {
           headers,
           body: JSON.stringify({
             email: form.email,
-            role: selectedRole,
+              role: selectedRole,
             code,
           }),
         });
@@ -104,7 +104,7 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      const res = await fetch(`${API}/v1/auth/login/verify-code`, {
+    const res = await fetch(`${API}/v1/auth/login/verify-code`, {
         method: "POST",
         headers,
         body: JSON.stringify({
