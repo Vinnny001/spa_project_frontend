@@ -6,51 +6,59 @@ const API =
     ? import.meta.env.VITE_DEV_API_URL
     : import.meta.env.VITE_API_URL;
 
+const EMPTY_FORM = {
+  title: "",
+  service_name: "",
+  price: "",
+  description: "",
+  duration_minutes: "",
+  status: "Available",
+  category_id: "",
+};
+
+// Pick a contextual icon per category name
+function categoryIcon(name = "") {
+  const n = name.toLowerCase();
+  if (n.includes("massage") || n.includes("stone")) return "ti-seeding";
+  if (n.includes("facial") || n.includes("face"))   return "ti-sparkles";
+  if (n.includes("nail") || n.includes("mani") || n.includes("pedi")) return "ti-hand-stop";
+  if (n.includes("hair"))  return "ti-scissors";
+  if (n.includes("body"))  return "ti-wave-sine";
+  return "ti-spa";
+}
+
 export default function ManageServices() {
-
-  const [services, setServices] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [form, setForm] = useState({ 
-    title: "", 
-    service_name: "",
-    price: "", 
-    description: "",
-    duration_minutes: "",
-    status: "Available",
-    category_id: ""
-  });
-  const [editId, setEditId] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [services, setServices]         = useState([]);
+  const [categories, setCategories]     = useState([]);
+  const [form, setForm]                 = useState(EMPTY_FORM);
+  const [editId, setEditId]             = useState(null);
+  const [loading, setLoading]           = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [error, setError]               = useState("");
+  const [formError, setFormError]       = useState("");
 
-  // Fetch all services
+  const token = () => localStorage.getItem("token");
+  const headers = () => ({ Authorization: `Bearer ${token()}` });
+
   const fetchServices = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const response = await axios.get(`${API}/v1/services`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      setServices(response.data.data || []);
-      setError(null);
+      const res = await axios.get(`${API}/v1/services`, { headers: headers() });
+      setServices(res.data.data || []);
+      setError("");
     } catch (err) {
-      console.error("Error fetching services:", err);
-      setError("Failed to load services");
+      setError(err.response?.data?.message || "Failed to load services.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch categories
   const fetchCategories = async () => {
     try {
-      const response = await axios.get(`${API}/v1/categories`);
-      setCategories(response.data.data || []);
-    } catch (err) {
-      console.error("Error fetching categories:", err);
+      const res = await axios.get(`${API}/v1/categories`);
+      setCategories(res.data.data || []);
+    } catch {
+      // non-critical
     }
   };
 
@@ -59,228 +67,256 @@ export default function ManageServices() {
     fetchCategories();
   }, []);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) =>
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  // ADD OR UPDATE
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormError("");
 
     if (!form.title || !form.price || !form.duration_minutes) {
-      alert("Please fill in all required fields");
+      setFormError("Title, price, and duration are required.");
       return;
     }
 
     try {
       setSubmitLoading(true);
-      const token = localStorage.getItem("token");
-      const headers = {
-        Authorization: `Bearer ${token}`
-      };
-
       if (editId !== null) {
-        // Update
-        await axios.patch(`${API}/v1/services/${editId}`, form, { headers });
-        alert("Service updated successfully");
+        await axios.patch(`${API}/v1/services/${editId}`, form, { headers: headers() });
       } else {
-        // Create
-        await axios.post(`${API}/v1/services`, form, { headers });
-        alert("Service created successfully");
+        await axios.post(`${API}/v1/services`, form, { headers: headers() });
       }
-
-      // Refresh services list
       await fetchServices();
-      setForm({ 
-        title: "", 
-        service_name: "",
-        price: "", 
-        description: "",
-        duration_minutes: "",
-        status: "Available"
-      });
+      setForm(EMPTY_FORM);
       setEditId(null);
     } catch (err) {
-      console.error("Error saving service:", err);
-      alert(err.response?.data?.message || "Failed to save service");
+      setFormError(err.response?.data?.message || "Failed to save service.");
     } finally {
       setSubmitLoading(false);
     }
   };
 
-  // DELETE
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this service?")) {
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`${API}/v1/services/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      alert("Service deleted successfully");
-      await fetchServices();
-    } catch (err) {
-      console.error("Error deleting service:", err);
-      alert(err.response?.data?.message || "Failed to delete service");
-    }
-  };
-
-  // EDIT
-  const handleEdit = (service) => {
+  const handleEdit = (s) => {
     setForm({
-      title: service.title,
-      service_name: service.service_name || "",
-      price: service.price,
-      description: service.description || "",
-      duration_minutes: service.duration_minutes,
-      status: service.status || "Available",
-      category_id: service.category_id || ""
+      title:            s.title,
+      service_name:     s.service_name     || "",
+      price:            s.price,
+      description:      s.description      || "",
+      duration_minutes: s.duration_minutes,
+      status:           s.status           || "Available",
+      category_id:      s.category_id      || "",
     });
-    setEditId(service.id);
+    setEditId(s.id);
+    setFormError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleCancel = () => {
-    setForm({ 
-      title: "", 
-      service_name: "",
-      price: "", 
-      description: "",
-      duration_minutes: "",
-      status: "Available",
-      category_id: ""
-    });
+    setForm(EMPTY_FORM);
     setEditId(null);
+    setFormError("");
   };
 
-  if (loading) {
-    return <div className="admin-page"><h1>💆‍♀️ Manage Services</h1><p>Loading...</p></div>;
-  }
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this service? This cannot be undone.")) return;
+    try {
+      await axios.delete(`${API}/v1/services/${id}`, { headers: headers() });
+      await fetchServices();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to delete service.");
+    }
+  };
 
   return (
-    <div className="admin-page">
-
-      <h1>💆‍♀️ Manage Services</h1>
-
-      {error && <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>}
-
-      {/* FORM */}
-      <form className="admin-form" onSubmit={handleSubmit}>
-
-        <input
-          name="title"
-          value={form.title}
-          onChange={handleChange}
-          placeholder="Service Title (required)"
-        />
-
-        <input
-          name="service_name"
-          value={form.service_name}
-          onChange={handleChange}
-          placeholder="Service Name (optional)"
-        />
-
-        <input
-          name="price"
-          type="number"
-          step="0.01"
-          value={form.price}
-          onChange={handleChange}
-          placeholder="Price (required)"
-        />
-
-        <input
-          name="duration_minutes"
-          type="number"
-          value={form.duration_minutes}
-          onChange={handleChange}
-          placeholder="Duration in minutes (required)"
-        />
-
-        <textarea
-          name="description"
-          value={form.description}
-          onChange={handleChange}
-          placeholder="Description"
-          rows="3"
-        />
-
-        <select
-          name="category_id"
-          value={form.category_id}
-          onChange={handleChange}
-        >
-          <option value="">Select Category (optional)</option>
-          {categories.map(cat => (
-            <option key={cat.category_id} value={cat.category_id}>
-              {cat.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          name="status"
-          value={form.status}
-          onChange={handleChange}
-        >
-          <option value="Available">Available</option>
-          <option value="Unavailable">Unavailable</option>
-        </select>
-
-        <div style={{ display: "flex", gap: "1rem" }}>
-          <button disabled={submitLoading}>
-            {submitLoading ? "Saving..." : editId ? "Update" : "Add"}
-          </button>
-          {editId && (
-            <button type="button" onClick={handleCancel} style={{ backgroundColor: "#666" }}>
-              Cancel
-            </button>
-          )}
+    <>
+      {/* ── TOPBAR ── */}
+      <div className="admin-topbar">
+        <div>
+          <div className="admin-topbar-title">Manage services</div>
+          <div className="admin-topbar-sub">Add, edit, and organise your spa treatments</div>
         </div>
-
-      </form>
-
-      {/* LIST */}
-      <div className="service-list">
-
-        {services.map(s => (
-          <div className="service-item" key={s.id}>
-
-            <div>
-              <h3>{s.title}</h3>
-              {s.service_name && <p className="service-name">Name: {s.service_name}</p>}
-              {s.category_name && <p className="category-name">Category: {s.category_name}</p>}
-              <p>{s.description}</p>
-              <div style={{ display: "flex", gap: "1rem", fontSize: "0.9rem", marginTop: "0.5rem" }}>
-                <span>KES {s.price}</span>
-                <span>{s.duration_minutes} mins</span>
-                <span style={{ color: s.status === "Available" ? "green" : "red" }}>
-                  {s.status}
-                </span>
-              </div>
-            </div>
-
-            <div className="service-actions">
-
-              <button onClick={() => handleEdit(s)}>
-                Edit
-              </button>
-
-              <button onClick={() => handleDelete(s.id)} style={{ backgroundColor: "#dc3545" }}>
-                Delete
-              </button>
-
-            </div>
-
-          </div>
-        ))}
-
       </div>
 
-    </div>
+      {/* ── PAGE ── */}
+      <div className="admin-page">
+
+        {error && <div className="admin-error">{error}</div>}
+
+        <div className="services-body">
+
+          {/* ── FORM ── */}
+          <div className="services-form-card">
+            <div className="services-form-head">
+              <span className="services-form-head-title">
+                {editId ? "Edit service" : "Add service"}
+              </span>
+              {editId && <span className="services-edit-badge">Editing</span>}
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="services-form-body">
+
+                {formError && (
+                  <div className="admin-error" style={{ marginBottom: 0 }}>
+                    {formError}
+                  </div>
+                )}
+
+                <div className="svc-field">
+                  <label>Title *</label>
+                  <input
+                    name="title"
+                    value={form.title}
+                    onChange={handleChange}
+                    placeholder="e.g. Deep tissue massage"
+                  />
+                </div>
+
+                <div className="svc-field">
+                  <label>Service name</label>
+                  <input
+                    name="service_name"
+                    value={form.service_name}
+                    onChange={handleChange}
+                    placeholder="Internal name (optional)"
+                  />
+                </div>
+
+                <div className="svc-form-row">
+                  <div className="svc-field">
+                    <label>Price (KES) *</label>
+                    <input
+                      name="price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.price}
+                      onChange={handleChange}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="svc-field">
+                    <label>Duration (min) *</label>
+                    <input
+                      name="duration_minutes"
+                      type="number"
+                      min="1"
+                      value={form.duration_minutes}
+                      onChange={handleChange}
+                      placeholder="60"
+                    />
+                  </div>
+                </div>
+
+                <div className="svc-field">
+                  <label>Description</label>
+                  <textarea
+                    name="description"
+                    value={form.description}
+                    onChange={handleChange}
+                    placeholder="What does this service include?"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="svc-form-row">
+                  <div className="svc-field">
+                    <label>Category</label>
+                    <select name="category_id" value={form.category_id} onChange={handleChange}>
+                      <option value="">No category</option>
+                      {categories.map((c) => (
+                        <option key={c.category_id} value={c.category_id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="svc-field">
+                    <label>Status</label>
+                    <select name="status" value={form.status} onChange={handleChange}>
+                      <option value="Available">Available</option>
+                      <option value="Unavailable">Unavailable</option>
+                    </select>
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="services-form-actions">
+                <button type="submit" className="svc-btn-primary" disabled={submitLoading}>
+                  {submitLoading ? "Saving…" : editId ? "Update service" : "Add service"}
+                </button>
+                {editId && (
+                  <button type="button" className="svc-btn-ghost" onClick={handleCancel}>
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* ── LIST ── */}
+          <div className="services-list-card">
+            <div className="services-list-head">
+              <span className="services-list-head-title">All services</span>
+              <span className="services-count">{services.length} service{services.length !== 1 ? "s" : ""}</span>
+            </div>
+
+            {loading ? (
+              <div className="admin-loading" style={{ padding: "32px 20px" }}>
+                <div className="admin-spinner" /> Loading services…
+              </div>
+            ) : services.length === 0 ? (
+              <div className="services-empty">No services yet. Add one using the form.</div>
+            ) : (
+              services.map((s) => (
+                <div className="svc-item" key={s.id}>
+                  <div className="svc-item-icon">
+                    <i className={`ti ${categoryIcon(s.category_name || s.title)}`} aria-hidden="true" />
+                  </div>
+
+                  <div className="svc-item-body">
+                    <div className="svc-item-title">{s.title}</div>
+                    {s.description && (
+                      <div className="svc-item-desc">{s.description}</div>
+                    )}
+                    <div className="svc-item-meta">
+                      <span className="svc-chip">
+                        KES {parseFloat(s.price || 0).toLocaleString()}
+                      </span>
+                      <span className="svc-chip">
+                        {s.duration_minutes} min
+                      </span>
+                      {s.category_name && (
+                        <span className="svc-chip">{s.category_name}</span>
+                      )}
+                      <span className={`svc-chip ${s.status === "Available" ? "svc-chip-available" : "svc-chip-unavailable"}`}>
+                        {s.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="svc-item-actions">
+                    <button
+                      className="svc-action-btn edit"
+                      title="Edit service"
+                      onClick={() => handleEdit(s)}
+                    >
+                      <i className="ti ti-edit" aria-hidden="true" />
+                    </button>
+                    <button
+                      className="svc-action-btn danger"
+                      title="Delete service"
+                      onClick={() => handleDelete(s.id)}
+                    >
+                      <i className="ti ti-trash" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+        </div>
+      </div>
+    </>
   );
 }
