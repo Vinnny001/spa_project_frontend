@@ -6,25 +6,33 @@ const API =
     ? import.meta.env.VITE_DEV_API_URL
     : import.meta.env.VITE_API_URL || window.location.origin;
 
-function initials(first = "", last = "") {
-  return `${first[0] || ""}${last[0] || ""}`.toUpperCase() || "?";
+// Safe against null, undefined, and empty string
+function initials(first, last) {
+  const f = (first ?? "")[0] ?? "";
+  const l = (last  ?? "")[0] ?? "";
+  return (f + l).toUpperCase() || "?";
+}
+
+// Safe full name display
+function fullName(first, last) {
+  return [first, last].filter(Boolean).join(" ") || "—";
 }
 
 export default function ManageClients() {
-  const [clients, setClients]           = useState([]);
-  const [filtered, setFiltered]         = useState([]);
-  const [search, setSearch]             = useState("");
-  const [error, setError]               = useState("");
-  const [actionError, setActionError]   = useState("");
+  const [clients, setClients]             = useState([]);
+  const [filtered, setFiltered]           = useState([]);
+  const [search, setSearch]               = useState("");
+  const [error, setError]                 = useState("");
+  const [actionError, setActionError]     = useState("");
   const [editingClient, setEditingClient] = useState(null);
-  const [saving, setSaving]             = useState(false);
+  const [saving, setSaving]               = useState(false);
 
-  const token  = () => localStorage.getItem("token");
+  const token   = () => localStorage.getItem("token");
   const headers = () => ({ Authorization: `Bearer ${token()}` });
 
   const fetchClients = async () => {
     try {
-      const res = await axios.get(`${API}/v1/users/customers`, { headers: headers() });
+      const res  = await axios.get(`${API}/v1/users/customers`, { headers: headers() });
       const data = res.data.data || [];
       setClients(data);
       setFiltered(data);
@@ -41,11 +49,10 @@ export default function ManageClients() {
     if (!search.trim()) { setFiltered(clients); return; }
     const q = search.toLowerCase();
     setFiltered(
-      clients.filter(
-        (c) =>
-          `${c.first_name} ${c.last_name}`.toLowerCase().includes(q) ||
-          (c.email || "").toLowerCase().includes(q) ||
-          (c.phone || "").includes(q)
+      clients.filter((c) =>
+        fullName(c.first_name, c.last_name).toLowerCase().includes(q) ||
+        (c.email || "").toLowerCase().includes(q) ||
+        (c.phone || "").includes(q)
       )
     );
   }, [search, clients]);
@@ -118,7 +125,7 @@ export default function ManageClients() {
         {error       && <div className="admin-error">{error}</div>}
         {actionError && <div className="admin-error">{actionError}</div>}
 
-        {/* Summary */}
+        {/* ── SUMMARY ── */}
         <div className="clients-summary">
           <div className="clients-summary-card">
             <div className="label">Total clients</div>
@@ -164,7 +171,9 @@ export default function ManageClients() {
                     <tr>
                       <td colSpan={4}>
                         <div className="clients-empty">
-                          {search ? "No clients match your search." : "No clients registered yet."}
+                          {search
+                            ? "No clients match your search."
+                            : "No clients registered yet."}
                         </div>
                       </td>
                     </tr>
@@ -172,8 +181,13 @@ export default function ManageClients() {
                     filtered.map((c) => (
                       <tr
                         key={c.customer_id}
-                        className={editingClient?.customer_id === c.customer_id ? "active-row" : ""}
+                        className={
+                          editingClient?.customer_id === c.customer_id
+                            ? "active-row"
+                            : ""
+                        }
                       >
+                        {/* Client cell */}
                         <td>
                           <div className="client-cell">
                             <div className="client-initials">
@@ -181,18 +195,25 @@ export default function ManageClients() {
                             </div>
                             <div>
                               <div className="client-name">
-                                {`${c.first_name || ""} ${c.last_name || ""}`.trim() || "—"}
+                                {fullName(c.first_name, c.last_name)}
                               </div>
                               <div className="client-email">{c.email || ""}</div>
                             </div>
                           </div>
                         </td>
-                        <td>{c.phone || "—"}</td>
+
+                        <td>{c.phone  || "—"}</td>
                         <td>{c.gender || "—"}</td>
+
+                        {/* Actions */}
                         <td>
                           <div className="client-row-actions">
                             <button
-                              className={`cl-action-btn edit ${editingClient?.customer_id === c.customer_id ? "active" : ""}`}
+                              className={`cl-action-btn edit ${
+                                editingClient?.customer_id === c.customer_id
+                                  ? "active"
+                                  : ""
+                              }`}
                               title="Edit client"
                               onClick={() => handleEdit(c)}
                             >
@@ -224,9 +245,11 @@ export default function ManageClients() {
                 </div>
                 <div className="ep-head-info">
                   <div className="ep-head-name">
-                    {`${editingClient.first_name || ""} ${editingClient.last_name || ""}`.trim()}
+                    {fullName(editingClient.first_name, editingClient.last_name)}
                   </div>
-                  <div className="ep-head-email">{editingClient.email}</div>
+                  <div className="ep-head-email">
+                    {editingClient.email || "No email"}
+                  </div>
                 </div>
                 <span className="ep-editing-badge">Editing</span>
               </div>
@@ -236,29 +259,41 @@ export default function ManageClients() {
                   <label>First name</label>
                   <input
                     name="first_name"
-                    value={editingClient.first_name || ""}
+                    value={editingClient.first_name ?? ""}
                     onChange={handleChange}
                   />
                 </div>
+
                 <div className="ep-field">
                   <label>Last name</label>
                   <input
                     name="last_name"
-                    value={editingClient.last_name || ""}
+                    value={editingClient.last_name ?? ""}
                     onChange={handleChange}
                   />
                 </div>
+
                 <div className="ep-field">
                   <label>Email</label>
-                  <div className="ep-readonly">{editingClient.email || "Not provided"}</div>
+                  <div className="ep-readonly">
+                    {editingClient.email || "Not provided"}
+                  </div>
                 </div>
+
                 <div className="ep-field">
                   <label>Phone</label>
-                  <div className="ep-readonly">{editingClient.phone || "Not provided"}</div>
+                  <div className="ep-readonly">
+                    {editingClient.phone || "Not provided"}
+                  </div>
                 </div>
+
                 <div className="ep-field">
                   <label>Gender</label>
-                  <select name="gender" value={editingClient.gender || ""} onChange={handleChange}>
+                  <select
+                    name="gender"
+                    value={editingClient.gender ?? ""}
+                    onChange={handleChange}
+                  >
                     <option value="">Select gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -266,6 +301,7 @@ export default function ManageClients() {
                     <option value="Prefer not to say">Prefer not to say</option>
                   </select>
                 </div>
+
                 <div className="ep-field">
                   <label>Date of birth</label>
                   <div className="ep-readonly">
@@ -277,7 +313,11 @@ export default function ManageClients() {
               </div>
 
               <div className="ep-footer">
-                <button className="ep-btn-save" onClick={handleSave} disabled={saving}>
+                <button
+                  className="ep-btn-save"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
                   {saving ? "Saving…" : "Save changes"}
                 </button>
                 <button className="ep-btn-cancel" onClick={handleCancel}>
