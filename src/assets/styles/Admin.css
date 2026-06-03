@@ -613,7 +613,8 @@
   outline: none;
   min-width: 140px;
   transition: border-color 0.2s;
-  -webkit-appearance: none;
+  -webkit-appearance: none; /* Safari / older Chrome */
+  appearance: none;         /* standard — all modern browsers */
 }
 
 .assign-select:focus { border-color: var(--brand-mid); }
